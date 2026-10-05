@@ -1,0 +1,9 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+TestResults/
+
+# Six Labors license key: personal to the licensee, never commit it.
+sixlabors.lic

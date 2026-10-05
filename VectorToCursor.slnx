@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VectorToCursor/VectorToCursor.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VectorToCursor.Tests/VectorToCursor.Tests.csproj" />
+  </Folder>
+</Solution>

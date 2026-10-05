@@ -1,0 +1,16 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- ImageSharp only searches below the project folder; the key lives in the repo root. -->
+  <PropertyGroup Condition="'$(SixLaborsLicenseFile)' == '' and '$(SixLaborsLicenseKey)' == '' and Exists('$(MSBuildThisFileDirectory)sixlabors.lic')">
+    <SixLaborsLicenseFile>$(MSBuildThisFileDirectory)sixlabors.lic</SixLaborsLicenseFile>
+  </PropertyGroup>
+
+</Project>
