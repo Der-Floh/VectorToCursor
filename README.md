@@ -18,7 +18,7 @@ VectorToCursor <input> -x <x> -y <y> [-o <file>]
 Example:
 
 ```
-> VectorToCursor tests/VectorToCursor.Tests/TestData/arrow.svg -x 3 -y 2
+> VectorToCursor VectorToCursor.Tests/TestData/arrow.svg -x 3 -y 2
 Created ...\arrow.cur
   Size  Hotspot
     32  3,2
@@ -58,7 +58,7 @@ Created ...\arrow.cur
 ```
 dotnet build
 dotnet test
-dotnet publish src/VectorToCursor -c Release -r win-x64
+dotnet publish VectorToCursor -c Release -r win-x64
 ```
 
 `libSkiaSharp.dll` and `libHarfBuzzSharp.dll` must stay next to `VectorToCursor.exe`. The `.pdb` files are only needed for debugging.
