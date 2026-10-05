@@ -4,6 +4,7 @@ obj/
 .idea/
 *.user
 TestResults/
+*.lscache
 
 # Six Labors license key: personal to the licensee, never commit it.
 sixlabors.lic
