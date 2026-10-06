@@ -5,7 +5,7 @@ Converts an SVG file into a Windows cursor (`.cur`) with images at 32, 48, 64, 9
 ## Usage
 
 ```
-VectorToCursor <input> -x <x> -y <y> [-o <file>]
+VectorToCursor <input> -x <x> -y <y> [-o <file>] [--bleed <percent>]
 ```
 
 | Argument / option | Meaning |
@@ -14,6 +14,7 @@ VectorToCursor <input> -x <x> -y <y> [-o <file>]
 | `-x`, `--hotspot-x` | Hotspot X in SVG coordinates (required). |
 | `-y`, `--hotspot-y` | Hotspot Y in SVG coordinates (required). |
 | `-o`, `--output` | The cursor file to write. Defaults to the input path with a `.cur` extension. An existing file is overwritten. |
+| `--bleed` | Width of the color band around the artwork, in percent of each cursor size (default 5, `0` turns it off). See [Transparent pixels](#transparent-pixels). |
 
 Example:
 
@@ -43,6 +44,14 @@ Created ...\arrow.cur
 - **Storage:** sizes 32 to 128 px are stored as 32-bit BMP and 256 px as PNG.
 - **Requirements:** the SVG needs a `viewBox` or an absolute `width`/`height`. A `transform` on the root `<svg>` element is not supported; wrap the content in a `<g>` instead.
 - **External resources:** only files in the SVG's folder and `data:` URIs are loaded. Nothing is fetched from the network.
+
+### Transparent pixels
+
+- **Why they get a color:** Windows scales a cursor whenever no image matches the requested size (for example 80 or 144 px), and it does so without premultiplying alpha. The color of fully transparent pixels then bleeds into the edges; left black, it shows up as a dark fringe.
+- **Band:** within `--bleed` percent of the cursor size (default 5%, rounded up: 2 px at 32 px up to 13 px at 256 px), transparent pixels take the color of the nearest edge pixel.
+- **Beyond the band:** all remaining transparent pixels share one color per image, the average of the band's outer edge. Windows never samples that far from an edge, and a flat area keeps the 256 px PNG small.
+- **Noise filter:** pixels below alpha 16 don't pass on their color, because after un-premultiplying it is mostly rounding noise; they take the nearest reliable edge color instead. If the whole artwork is that faint, every visible pixel counts.
+- **Unchanged look:** alpha is never changed, so at native sizes the cursor looks exactly as rendered.
 
 ## Prerequisites
 

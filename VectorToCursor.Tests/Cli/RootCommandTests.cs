@@ -17,7 +17,48 @@ public sealed class RootCommandTests
         CommandRun run = Run(converter, InputPath, "-x", "3.5", "--hotspot-y", "2");
 
         Assert.Equal(ExitCodes.Success, run.ExitCode);
-        Assert.Equal(new ConversionRequest(InputPath, Path.ChangeExtension(InputPath, ".cur"), new SvgPoint(3.5, 2)), converter.LastRequest);
+        Assert.Equal(new ConversionRequest(InputPath, Path.ChangeExtension(InputPath, ".cur"), new SvgPoint(3.5, 2), BleedPercentage.Default), converter.LastRequest);
+    }
+
+    [Theory]
+    [InlineData("2.5", 2.5)]
+    [InlineData("0", 0)]
+    [InlineData("100", 100)]
+    public void BleedOption_IsPassedToConverter(string value, double expected)
+    {
+        FakeCursorConverter converter = new();
+
+        CommandRun run = Run(converter, InputPath, "-x", "3", "-y", "2", "--bleed", value);
+
+        Assert.Equal(ExitCodes.Success, run.ExitCode);
+        Assert.Equal(expected, converter.LastRequest?.Bleed.Value);
+    }
+
+    [Theory]
+    [InlineData("-1", "Expected a percentage from 0 to 100")]
+    [InlineData("101", "Expected a percentage from 0 to 100")]
+    [InlineData("3,5", "'.' as the decimal separator")]
+    [InlineData("abc", "'.' as the decimal separator")]
+    public void InvalidBleed_IsRejected(string value, string expectedHint)
+    {
+        FakeCursorConverter converter = new();
+
+        CommandRun run = Run(converter, InputPath, "-x", "3", "-y", "2", "--bleed", value);
+
+        Assert.Equal(ExitCodes.Failure, run.ExitCode);
+        Assert.Contains($"Invalid value '{value}' for --bleed", run.Error);
+        Assert.Contains(expectedHint, run.Error);
+        Assert.Null(converter.LastRequest);
+    }
+
+    [Fact]
+    public void Help_ShowsBleedDefault()
+    {
+        CommandRun run = Run(new FakeCursorConverter(), "--help");
+
+        string help = string.Join(' ', run.Output.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        Assert.Contains("--bleed <percent>", help);
+        Assert.Contains("[default: 5]", help);
     }
 
     [Fact]

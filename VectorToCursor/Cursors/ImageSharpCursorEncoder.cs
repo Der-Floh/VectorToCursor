@@ -1,4 +1,5 @@
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.Formats.Cur;
 using SixLabors.ImageSharp.Formats.Icon;
@@ -15,7 +16,8 @@ internal sealed class ImageSharpCursorEncoder : ICursorEncoder
     // Larger frames are PNG-compressed; a 256 px 32-bit BMP alone would take about 270 KB.
     private const int LargestBmpFrameSize = 128;
 
-    private static readonly CurEncoder Encoder = new() { SkipMetadata = true };
+    // Preserve keeps the colors ColorBleed gave transparent pixels in both the BMP and the PNG frames.
+    private static readonly CurEncoder Encoder = new() { SkipMetadata = true, TransparentColorMode = TransparentColorMode.Preserve };
 
     public void Encode(IReadOnlyList<CursorFrame> frames, Stream destination)
     {

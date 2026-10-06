@@ -31,7 +31,11 @@ internal sealed class CursorConverter : ICursorConverter
         try
         {
             for (int index = 0; index < fits.Count; index++)
-                frames.Add(new CursorFrame(artwork.Render(fits[index]), summaries[index].Hotspot));
+            {
+                CursorFrame frame = new(artwork.Render(fits[index]), summaries[index].Hotspot);
+                frames.Add(frame);
+                ColorBleed.Apply(frame.Image, request.Bleed.BandWidthFor(frame.Size));
+            }
 
             WriteAtomically(outputPath, stream => _cursorEncoder.Encode(frames, stream));
         }

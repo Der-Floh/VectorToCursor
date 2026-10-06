@@ -80,6 +80,18 @@ public sealed class ImageSharpCursorEncoderTests
     }
 
     [Fact]
+    public void Encode_KeepsColorOfTransparentPixelsInEveryFrame()
+    {
+        Rgba32 transparentColor = new(10, 20, 30, 0);
+        byte[] cursor = EncodeAllSizes(size => CreateHalfTransparent(size, transparentColor));
+
+        using Image<Rgba32> decoded = Image.Load<Rgba32>(cursor);
+
+        for (int index = 0; index < CursorSizes.All.Count; index++)
+            Assert.Equal(transparentColor, decoded.Frames[index][CursorSizes.All[index] - 1, 0]);
+    }
+
+    [Fact]
     public void Encode_NoFrames_Throws()
     {
         using MemoryStream stream = new();
@@ -105,9 +117,11 @@ public sealed class ImageSharpCursorEncoderTests
         Assert.Throws<ArgumentException>(() => new ImageSharpCursorEncoder().Encode([frame], stream));
     }
 
-    private static byte[] EncodeAllSizes()
+    private static byte[] EncodeAllSizes() => EncodeAllSizes(CreatePattern);
+
+    private static byte[] EncodeAllSizes(Func<int, Image<Rgba32>> createImage)
     {
-        List<CursorFrame> frames = [.. CursorSizes.All.Select(size => new CursorFrame(CreatePattern(size), HotspotFor(size)))];
+        List<CursorFrame> frames = [.. CursorSizes.All.Select(size => new CursorFrame(createImage(size), HotspotFor(size)))];
         try
         {
             using MemoryStream stream = new();
@@ -135,6 +149,18 @@ public sealed class ImageSharpCursorEncoderTests
                     row[x] = new Rgba32((byte)x, (byte)y, (byte)size, (byte)(55 + (x + y) % 200));
             }
         });
+        return image;
+    }
+
+    // Opaque left half: a 32-bit BMP whose alpha is zero everywhere would decode as opaque.
+    private static Image<Rgba32> CreateHalfTransparent(int size, Rgba32 transparentColor)
+    {
+        Image<Rgba32> image = new(size, size, transparentColor);
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size / 2; x++)
+                image[x, y] = new Rgba32(200, 0, 0, 255);
+        }
         return image;
     }
 
