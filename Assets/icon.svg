@@ -1,0 +1,6 @@
+<svg width="24px" height="24px" fill="#000000" version="1.1" viewBox="0 -960 960 960" xmlns="http://www.w3.org/2000/svg">
+ <g transform="matrix(.81173 0 0 .81173 31.454 -87.123)">
+  <path d="m600-80v-100l-280-140h-200v-240h172l108-124v-196h240v240h-172l-108 124v126l240 120v-50h240v240zm-120-640h80v-80h-80zm-280 320h80v-80h-80zm480 240h80v-80h-80z" fill="#2f849a"/>
+  <path d="m836.55 46.787-145-312-166 232v-720l560 440h-284l144 309z" fill="#fff" stroke="#000" stroke-linejoin="round" stroke-width="40"/>
+ </g>
+</svg>

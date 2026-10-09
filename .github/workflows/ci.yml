@@ -25,6 +25,7 @@ jobs:
       publish-profile: FolderProfile
       author: Der_Floh
       package-name: VectorToCursor
+      splash-image: Assets/icon-x512.png
       shortcuts: None
       plain-portable: true
     secrets:

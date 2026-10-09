@@ -1,4 +1,4 @@
-# VectorToCursor
+# <img src="https://raw.githubusercontent.com/Der-Floh/VectorToCursor/main/Assets/icon-x512.png" alt="VectorToCursor icon" width="64"> VectorToCursor
 
 [![GitHub Release](https://img.shields.io/github/v/release/Der-Floh/VectorToCursor)](https://github.com/Der-Floh/VectorToCursor/releases/latest)
 [![GitHub Downloads](https://img.shields.io/github/downloads/Der-Floh/VectorToCursor/total)](https://github.com/Der-Floh/VectorToCursor/releases)
@@ -15,7 +15,7 @@ Download the setup or the portable archive for your processor from the [latest r
 
 ## Usage
 
-```
+```txt
 VectorToCursor <input> -x <x> -y <y> [-o <file>] [--sizes <list>] [--image-format <bmp|png>] [--bleed <percent>] [--fps <rate>]
 ```
 
@@ -32,7 +32,7 @@ VectorToCursor <input> -x <x> -y <y> [-o <file>] [--sizes <list>] [--image-forma
 
 Examples:
 
-```
+```txt
 > VectorToCursor VectorToCursor.Tests/TestData/arrow.svg -x 3 -y 2
 Created ...\arrow.cur with BMP images
   Size  Hotspot
@@ -96,31 +96,11 @@ Created ...\css-blink.ani with BMP images: 6 frames at 30 fps (0.2 s)
 - **Noise filter:** pixels below alpha 16 don't pass on their color, because after un-premultiplying it is mostly rounding noise; they take the nearest reliable edge color instead. If the whole artwork is that faint, every visible pixel counts.
 - **Unchanged look:** alpha is never changed, so at native sizes the cursor looks exactly as rendered.
 
-## Prerequisites
+## 📜 License
 
-- **.NET 10 SDK.**
-- **ImageSharp license key.** Apply at https://licensing.sixlabors.com; it is free for open-source projects and companies under USD 1M revenue.
-  - Put `sixlabors.lic` in the repository root.
-  - Without it, Debug builds only warn, but Release builds and `dotnet publish` fail.
-  - The file is git-ignored; never commit it. CI reads the key from the repository secret `SIXLABORS_LICENSE_KEY` instead; see [CI and releases](#ci-and-releases).
-- **NativeAOT publishing** needs Visual Studio or Build Tools 2022 or later with the *Desktop development with C++* workload, and its *C++ ARM64 build tools* to publish for `win-arm64`.
+Licensed under the [MIT License](./LICENSE).
 
-## Build, test, publish
+<br>
+<br>
 
-```
-dotnet build
-dotnet test
-dotnet publish VectorToCursor -c Release -r win-x64
-```
-
-The publish folder holds `VectorToCursor.exe`, `libSkiaSharp.dll` and `libHarfBuzzSharp.dll`, which must stay together. Debug symbols are left out of it; the app's own `.pdb` stays in `VectorToCursor\bin\Release\net10.0\win-x64\native`.
-
-**Troubleshooting:** if publish fails with `"vswhere.exe" is not recognized`, the environment variable `NoDefaultCurrentDirectoryInExePath` is set. Add `%ProgramFiles(x86)%\Microsoft Visual Studio\Installer` to `PATH`.
-
-## CI and releases
-
-The workflows call the shared workflows of [Der-Floh/Der-Floh](https://github.com/Der-Floh/Der-Floh/blob/main/.github/CI.md).
-
-- **CI:** every push and pull request builds the app, runs the tests and packs a setup for `win-x64`, `win-x86` and `win-arm64` without releasing it. Dependabot's minor and patch updates are merged once CI passes.
-- **Release:** publishing a GitHub release with a tag such as `v1.2.3` packs the setup and portable archive for every runtime, installs and uninstalls each setup on a runner of its architecture, and attaches them to the release. A WinGet update follows once a first version of `Der_Floh.VectorToCursor` has been submitted by hand.
-- **Secrets:** `SIXLABORS_LICENSE_KEY` holds the ImageSharp key. Set it as an Actions secret and as a Dependabot secret, since Dependabot's pull requests can't read Actions secrets. `WINGET_CREATE_GITHUB_TOKEN` is only needed for WinGet.
+[!["Buy me a coffee"](https://raw.githubusercontent.com/Der-Floh/Der-Floh/refs/heads/main/_meta/BuyMeACoffee/Buttons%20%26%20Icons/orange-button-x180.png)](https://www.buymeacoffee.com/der_floh)
