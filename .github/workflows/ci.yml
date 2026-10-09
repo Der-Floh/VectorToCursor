@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: Der-Floh/Der-Floh/.github/workflows/app-ci.yml@v1
+    with:
+      projects: >-
+        [
+        {"name": "cli", "project": "VectorToCursor/VectorToCursor.csproj", "wasm": false}
+        ]
+      test-project: VectorToCursor.Tests/VectorToCursor.Tests.csproj
+      publish-project: VectorToCursor/VectorToCursor.csproj
+      publish-profile: FolderProfile
+      author: Der_Floh
+      package-name: VectorToCursor
+      shortcuts: None
+      plain-portable: true
+    secrets:
+      SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
+
+  automerge:
+    needs: ci
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: Der-Floh/Der-Floh/.github/workflows/dependabot-automerge.yml@v1

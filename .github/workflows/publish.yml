@@ -1,0 +1,28 @@
+name: Publish Release
+
+on:
+  release:
+    types: [published]
+
+concurrency:
+  group: winget-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  publish:
+    uses: Der-Floh/Der-Floh/.github/workflows/app-publish.yml@v1
+    with:
+      project-path: VectorToCursor/VectorToCursor.csproj
+      publish-profile: FolderProfile
+      author: Der_Floh
+      package-name: VectorToCursor
+      shortcuts: None
+      plain-portable: true
+    secrets:
+      SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
+      WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_CREATE_GITHUB_TOKEN }}

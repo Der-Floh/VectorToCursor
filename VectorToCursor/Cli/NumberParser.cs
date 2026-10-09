@@ -35,6 +35,38 @@ internal static class NumberParser
         return default;
     }
 
+    public static FrameRate ParseFrameRate(ArgumentResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        if (int.TryParse(Token(result), NumberStyles.None, CultureInfo.InvariantCulture, out int framesPerSecond) && FrameRate.TryCreate(framesPerSecond, out FrameRate frameRate))
+            return frameRate;
+
+        IEnumerable<int> allowed = Enumerable.Range(1, FrameRate.JiffiesPerSecond).Where(rate => FrameRate.JiffiesPerSecond % rate == 0).Reverse();
+        result.AddError($"Invalid value '{Token(result)}' for {OptionName(result)}. Expected a frame rate that divides {FrameRate.JiffiesPerSecond}: {string.Join(", ", allowed)}.");
+        return default;
+    }
+
+    public static CursorSizes? ParseCursorSizes(ArgumentResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        List<int> sizes = [];
+        foreach (string part in Token(result).Split(',', StringSplitOptions.TrimEntries))
+        {
+            if (!int.TryParse(part, NumberStyles.None, CultureInfo.InvariantCulture, out int size))
+                return RejectCursorSizes(result);
+            sizes.Add(size);
+        }
+        return CursorSizes.TryCreate(sizes, out CursorSizes? cursorSizes) ? cursorSizes : RejectCursorSizes(result);
+    }
+
+    private static CursorSizes? RejectCursorSizes(ArgumentResult result)
+    {
+        result.AddError($"Invalid value '{Token(result)}' for {OptionName(result)}. Expected comma-separated sizes from {CursorSizes.Minimum} to {CursorSizes.Maximum} px, each listed once, e.g. 32,48,64.");
+        return null;
+    }
+
     // NumberStyles.Float excludes thousands separators, so "3,5" is rejected instead of being read as 35.
     private static bool TryParse(ArgumentResult result, out double value) =>
         double.TryParse(Token(result), NumberStyles.Float, CultureInfo.InvariantCulture, out value) && double.IsFinite(value);

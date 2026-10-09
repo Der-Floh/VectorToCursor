@@ -1,0 +1,26 @@
+name: Publish to WinGet
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish (e.g. v1.2.3)
+        required: true
+        type: string
+
+concurrency:
+  group: winget-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish-winget:
+    uses: Der-Floh/Der-Floh/.github/workflows/app-publish-winget.yml@v1
+    with:
+      tag: ${{ inputs.tag }}
+      author: Der_Floh
+      package-name: VectorToCursor
+    secrets:
+      WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_CREATE_GITHUB_TOKEN }}

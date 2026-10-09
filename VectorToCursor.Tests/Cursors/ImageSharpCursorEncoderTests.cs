@@ -23,7 +23,7 @@ public sealed class ImageSharpCursorEncoderTests
 
         Assert.Equal(0, ReadUInt16(cursor, 0));
         Assert.Equal(CursorResourceType, ReadUInt16(cursor, 2));
-        Assert.Equal(CursorSizes.All.Count, ReadUInt16(cursor, 4));
+        Assert.Equal(CursorSizes.Default.Values.Count, ReadUInt16(cursor, 4));
     }
 
     [Fact]
@@ -31,9 +31,9 @@ public sealed class ImageSharpCursorEncoderTests
     {
         byte[] cursor = EncodeAllSizes();
 
-        for (int index = 0; index < CursorSizes.All.Count; index++)
+        for (int index = 0; index < CursorSizes.Default.Values.Count; index++)
         {
-            int size = CursorSizes.All[index];
+            int size = CursorSizes.Default.Values[index];
             int entry = DirectoryHeaderSize + index * DirectoryEntrySize;
             byte expectedDimension = size == 256 ? (byte)0 : (byte)size;
 
@@ -44,32 +44,37 @@ public sealed class ImageSharpCursorEncoderTests
     }
 
     [Fact]
-    public void Encode_StoresSmallFramesAsBmpAndLargestAsPng()
+    public void Encode_BmpFormat_StoresEveryFrameAsBmp()
     {
-        byte[] cursor = EncodeAllSizes();
+        byte[] cursor = EncodeAllSizes(CursorImageFormat.Bmp);
 
-        for (int index = 0; index < CursorSizes.All.Count; index++)
-        {
-            ReadOnlySpan<byte> payload = ReadPayload(cursor, index);
-
-            if (CursorSizes.All[index] > 128)
-                Assert.Equal(PngSignature, payload[..PngSignature.Length].ToArray());
-            else
-                Assert.Equal(BitmapInfoHeaderSize, BinaryPrimitives.ReadInt32LittleEndian(payload));
-        }
+        for (int index = 0; index < CursorSizes.Default.Values.Count; index++)
+            Assert.Equal(BitmapInfoHeaderSize, BinaryPrimitives.ReadInt32LittleEndian(ReadPayload(cursor, index)));
     }
 
     [Fact]
-    public void Encode_RoundTripsPixelsAndHotspots()
+    public void Encode_PngFormat_StoresEveryFrameAsPng()
     {
-        byte[] cursor = EncodeAllSizes();
+        byte[] cursor = EncodeAllSizes(CursorImageFormat.Png);
+
+        for (int index = 0; index < CursorSizes.Default.Values.Count; index++)
+            Assert.Equal(PngSignature, ReadPayload(cursor, index)[..PngSignature.Length].ToArray());
+    }
+
+    // The format is passed by name: a public test method can't take the internal enum (CS0051).
+    [Theory]
+    [InlineData(nameof(CursorImageFormat.Bmp))]
+    [InlineData(nameof(CursorImageFormat.Png))]
+    public void Encode_RoundTripsPixelsAndHotspots(string format)
+    {
+        byte[] cursor = EncodeAllSizes(Enum.Parse<CursorImageFormat>(format));
 
         using Image<Rgba32> decoded = Image.Load<Rgba32>(cursor);
 
-        Assert.Equal(CursorSizes.All.Count, decoded.Frames.Count);
-        for (int index = 0; index < CursorSizes.All.Count; index++)
+        Assert.Equal(CursorSizes.Default.Values.Count, decoded.Frames.Count);
+        for (int index = 0; index < CursorSizes.Default.Values.Count; index++)
         {
-            int size = CursorSizes.All[index];
+            int size = CursorSizes.Default.Values[index];
             ImageFrame<Rgba32> frame = decoded.Frames[index];
             CurFrameMetadata metadata = frame.Metadata.GetCurMetadata();
 
@@ -79,16 +84,18 @@ public sealed class ImageSharpCursorEncoderTests
         }
     }
 
-    [Fact]
-    public void Encode_KeepsColorOfTransparentPixelsInEveryFrame()
+    [Theory]
+    [InlineData(nameof(CursorImageFormat.Bmp))]
+    [InlineData(nameof(CursorImageFormat.Png))]
+    public void Encode_KeepsColorOfTransparentPixelsInEveryFrame(string format)
     {
         Rgba32 transparentColor = new(10, 20, 30, 0);
-        byte[] cursor = EncodeAllSizes(size => CreateHalfTransparent(size, transparentColor));
+        byte[] cursor = EncodeAllSizes(size => CreateHalfTransparent(size, transparentColor), Enum.Parse<CursorImageFormat>(format));
 
         using Image<Rgba32> decoded = Image.Load<Rgba32>(cursor);
 
-        for (int index = 0; index < CursorSizes.All.Count; index++)
-            Assert.Equal(transparentColor, decoded.Frames[index][CursorSizes.All[index] - 1, 0]);
+        for (int index = 0; index < CursorSizes.Default.Values.Count; index++)
+            Assert.Equal(transparentColor, decoded.Frames[index][CursorSizes.Default.Values[index] - 1, 0]);
     }
 
     [Fact]
@@ -96,7 +103,7 @@ public sealed class ImageSharpCursorEncoderTests
     {
         using MemoryStream stream = new();
 
-        Assert.Throws<ArgumentException>(() => new ImageSharpCursorEncoder().Encode([], stream));
+        Assert.Throws<ArgumentException>(() => new ImageSharpCursorEncoder().Encode([], stream, CursorImageFormat.Bmp));
     }
 
     [Fact]
@@ -105,7 +112,7 @@ public sealed class ImageSharpCursorEncoderTests
         using CursorFrame frame = new(new Image<Rgba32>(257, 257), new PixelHotspot(0, 0));
         using MemoryStream stream = new();
 
-        Assert.Throws<ArgumentException>(() => new ImageSharpCursorEncoder().Encode([frame], stream));
+        Assert.Throws<ArgumentException>(() => new ImageSharpCursorEncoder().Encode([frame], stream, CursorImageFormat.Bmp));
     }
 
     [Fact]
@@ -114,18 +121,18 @@ public sealed class ImageSharpCursorEncoderTests
         using CursorFrame frame = new(CreatePattern(32), new PixelHotspot(0, 0));
         using MemoryStream stream = new([], writable: false);
 
-        Assert.Throws<ArgumentException>(() => new ImageSharpCursorEncoder().Encode([frame], stream));
+        Assert.Throws<ArgumentException>(() => new ImageSharpCursorEncoder().Encode([frame], stream, CursorImageFormat.Bmp));
     }
 
-    private static byte[] EncodeAllSizes() => EncodeAllSizes(CreatePattern);
+    private static byte[] EncodeAllSizes(CursorImageFormat format = CursorImageFormat.Bmp) => EncodeAllSizes(CreatePattern, format);
 
-    private static byte[] EncodeAllSizes(Func<int, Image<Rgba32>> createImage)
+    private static byte[] EncodeAllSizes(Func<int, Image<Rgba32>> createImage, CursorImageFormat format = CursorImageFormat.Bmp)
     {
-        List<CursorFrame> frames = [.. CursorSizes.All.Select(size => new CursorFrame(createImage(size), HotspotFor(size)))];
+        List<CursorFrame> frames = [.. CursorSizes.Default.Values.Select(size => new CursorFrame(createImage(size), HotspotFor(size)))];
         try
         {
             using MemoryStream stream = new();
-            new ImageSharpCursorEncoder().Encode(frames, stream);
+            new ImageSharpCursorEncoder().Encode(frames, stream, format);
             return stream.ToArray();
         }
         finally

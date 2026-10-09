@@ -4,6 +4,7 @@ using Svg.Model;
 using Svg.Model.Services;
 using Svg.Skia;
 using VectorToCursor.Domain;
+using VectorToCursor.Rendering.Animation;
 
 namespace VectorToCursor.Rendering;
 
@@ -27,7 +28,8 @@ internal sealed class SkiaSvgLoader : ISvgLoader
         SvgDocument document = Open(path);
         ArtworkBounds bounds = ResolveBounds(document, path);
         NormalizeViewport(document, bounds);
-        return CreateArtwork(document, bounds, path);
+        TimeSpan? loopDuration = PrepareAnimations(document, path);
+        return CreateArtwork(document, bounds, loopDuration, path);
     }
 
     private static SvgDocument Open(string path)
@@ -35,7 +37,8 @@ internal sealed class SkiaSvgLoader : ISvgLoader
         SvgParameters parameters = new(Entities: null, Css: null, LoadOptions: new SvgDocumentLoadOptions { ExternalResources = SvgExternalResourcePolicy.SameOrigin });
         try
         {
-            return SvgService.Open(path, parameters) ?? throw new CursorConversionException($"'{path}' could not be read as an SVG file.");
+            // Capturing the compatibility style state would freeze every animation of an SVG that has both a <style> and a <use>.
+            return SvgService.Open(path, parameters, captureCompatibilityStyleState: false) ?? throw new CursorConversionException($"'{path}' could not be read as an SVG file.");
         }
         catch (Exception exception) when (IsParserFailure(exception))
         {
@@ -72,15 +75,33 @@ internal sealed class SkiaSvgLoader : ISvgLoader
         document.Height = new SvgUnit(SvgUnitType.Pixel, (float)bounds.Height);
     }
 
-    private static SkiaSvgArtwork CreateArtwork(SvgDocument document, ArtworkBounds bounds, string path)
+    // Svg.Skia's engine only plays SMIL, so CSS animations are turned into SMIL first; the loop then covers both kinds.
+    private static TimeSpan? PrepareAnimations(SvgDocument document, string path)
+    {
+        // The engine finds animated elements by their position below the root; a wrapped root would silently stop all animation.
+        if (document.Parent is not null)
+            throw new InvalidOperationException("SVG documents must be loaded through SvgService so that their root has no parent.");
+
+        try
+        {
+            CssAnimationTranslator.Translate(document);
+            return AnimationLoop.Calculate(SmilTimingReader.ReadAndNormalize(document));
+        }
+        catch (CursorConversionException exception)
+        {
+            throw new CursorConversionException($"'{path}': {exception.Message}", exception);
+        }
+    }
+
+    private static SkiaSvgArtwork CreateArtwork(SvgDocument document, ArtworkBounds bounds, TimeSpan? loopDuration, string path)
     {
         SKSvg svg = new();
         try
         {
             // Otherwise a blocked or missing <image> is drawn as a placeholder glyph inside the cursor.
             svg.Settings.EnableBrokenImagePlaceholders = false;
-            SKPicture picture = svg.FromSvgDocument(document) ?? throw new CursorConversionException($"'{path}' could not be rendered.");
-            return new SkiaSvgArtwork(svg, picture, bounds);
+            _ = svg.FromSvgDocument(document) ?? throw new CursorConversionException($"'{path}' could not be rendered.");
+            return new SkiaSvgArtwork(svg, bounds, svg.HasAnimations ? loopDuration : null);
         }
         catch (Exception exception) when (IsParserFailure(exception))
         {

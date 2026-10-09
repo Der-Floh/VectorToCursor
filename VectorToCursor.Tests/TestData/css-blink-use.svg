@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 32 32">
+  <style>
+    .blink { animation: blink 0.2s linear infinite; }
+    @keyframes blink { from { opacity: 1; } to { opacity: 0; } }
+  </style>
+  <rect id="half" class="blink" width="16" height="32" fill="#4987EE" />
+  <use xlink:href="#half" x="16" />
+</svg>

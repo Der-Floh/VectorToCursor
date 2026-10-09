@@ -10,6 +10,8 @@ public sealed class SkiaSvgLoaderTests
     private const byte Opaque = 255;
     private const byte Transparent = 0;
 
+    private static readonly TimeSpan BlinkLoop = TimeSpan.FromMilliseconds(200);
+
     private readonly SkiaSvgLoader _loader = new();
 
     [Theory]
@@ -33,7 +35,7 @@ public sealed class SkiaSvgLoaderTests
     [InlineData("left-half-no-viewbox.svg")]
     public void Render_EquivalentCoordinateSystems_ProduceIdenticalPixels(string fileName)
     {
-        foreach (int size in CursorSizes.All)
+        foreach (int size in CursorSizes.Default.Values)
         {
             using Image<Rgba32> expected = Render("left-half.svg", size);
             using Image<Rgba32> actual = Render(fileName, size);
@@ -122,13 +124,82 @@ public sealed class SkiaSvgLoaderTests
         SquareFit fit = SquareFit.Create(artwork.Bounds, 32);
         artwork.Dispose();
 
-        Assert.Throws<ObjectDisposedException>(() => artwork.Render(fit));
+        Assert.Throws<ObjectDisposedException>(() => artwork.Render(fit, TimeSpan.Zero));
+    }
+
+    [Theory]
+    [InlineData("left-half.svg")]
+    [InlineData("static-styled.svg")]
+    public void Load_StaticSvg_HasNoLoop(string fileName)
+    {
+        using ISvgArtwork artwork = _loader.Load(TestFiles.PathOf(fileName));
+
+        Assert.Null(artwork.LoopDuration);
+    }
+
+    [Theory]
+    [InlineData("css-blink.svg")]
+    [InlineData("smil-blink.svg")]
+    [InlineData("css-blink-use.svg")]
+    public void Load_AnimatedSvg_HasLoopOfItsAnimation(string fileName)
+    {
+        using ISvgArtwork artwork = _loader.Load(TestFiles.PathOf(fileName));
+
+        Assert.Equal(BlinkLoop, artwork.LoopDuration);
+    }
+
+    [Theory]
+    [InlineData("css-blink.svg", 0, Opaque)]
+    [InlineData("css-blink.svg", 100, 128)]
+    [InlineData("smil-blink.svg", 100, 128)]
+    [InlineData("css-blink-use.svg", 100, 128)]
+    [InlineData("css-blink.svg", 200, Opaque)]
+    public void Render_AnimatedSvg_ShowsTheMomentOfItsLoop(string fileName, int milliseconds, int expectedAlpha)
+    {
+        using ISvgArtwork artwork = _loader.Load(TestFiles.PathOf(fileName));
+
+        using Image<Rgba32> image = artwork.Render(SquareFit.Create(artwork.Bounds, 32), TimeSpan.FromMilliseconds(milliseconds));
+
+        Assert.InRange(image[16, 16].A, expectedAlpha - 1, expectedAlpha + 1);
+    }
+
+    [Fact]
+    public void Render_AnimatedSvgBackInTime_ShowsEarlierMoment()
+    {
+        using ISvgArtwork artwork = _loader.Load(TestFiles.PathOf("css-blink.svg"));
+        SquareFit fit = SquareFit.Create(artwork.Bounds, 32);
+
+        using Image<Rgba32> later = artwork.Render(fit, TimeSpan.FromMilliseconds(150));
+        using Image<Rgba32> earlier = artwork.Render(fit, TimeSpan.FromMilliseconds(50));
+
+        Assert.True(earlier[16, 16].A > later[16, 16].A);
+    }
+
+    [Fact]
+    public void Load_UnsupportedAnimation_ThrowsConversionExceptionNamingTheFile()
+    {
+        using TemporaryDirectory directory = new();
+        string path = directory.PathOf("paused.svg");
+        File.WriteAllText(path, """
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+              <style>
+                rect { animation: blink 1s paused; }
+                @keyframes blink { to { opacity: 0; } }
+              </style>
+              <rect width="32" height="32" />
+            </svg>
+            """);
+
+        CursorConversionException exception = Assert.Throws<CursorConversionException>(() => _loader.Load(path));
+
+        Assert.Contains(path, exception.Message);
+        Assert.Contains("paused", exception.Message);
     }
 
     private Image<Rgba32> Render(string fileName, int size)
     {
         using ISvgArtwork artwork = _loader.Load(TestFiles.PathOf(fileName));
-        return artwork.Render(SquareFit.Create(artwork.Bounds, size));
+        return artwork.Render(SquareFit.Create(artwork.Bounds, size), TimeSpan.Zero);
     }
 
     private static void AssertPixelsEqual(Image<Rgba32> expected, Image<Rgba32> actual)

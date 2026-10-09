@@ -1,20 +1,26 @@
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Cur;
+using SixLabors.ImageSharp.Formats.Icon;
 using SixLabors.ImageSharp.PixelFormats;
 using VectorToCursor.Application;
 using VectorToCursor.Cursors;
 using VectorToCursor.Domain;
 using VectorToCursor.Rendering;
+using VectorToCursor.Tests.Cursors;
 
 namespace VectorToCursor.Tests.Application;
 
 public sealed class CursorConverterTests : IDisposable
 {
+    private const int AnimationFrameCount = 6;
+
     private static readonly string InputPath = TestFiles.PathOf("left-half.svg");
+    private static readonly string AnimatedInputPath = TestFiles.PathOf("css-blink.svg");
+    private static readonly TimeSpan AnimationLoop = TimeSpan.FromMilliseconds(200);
     private static readonly Rgba32 SquareColor = new(0x49, 0x87, 0xEE, 0);
 
     private readonly TemporaryDirectory _directory = new();
-    private readonly CursorConverter _converter = new(new SkiaSvgLoader(), new ImageSharpCursorEncoder());
+    private readonly CursorConverter _converter = new(new SkiaSvgLoader(), new ImageSharpCursorEncoder(), new AniEncoder());
 
     public void Dispose() => _directory.Dispose();
 
@@ -25,17 +31,18 @@ public sealed class CursorConverterTests : IDisposable
         int[] expectedX = [3, 4, 6, 9, 12, 24];
         int[] expectedY = [2, 3, 4, 6, 8, 16];
 
-        ConversionResult result = _converter.Convert(new ConversionRequest(InputPath, outputPath, new SvgPoint(3, 2), BleedPercentage.Default));
+        ConversionResult result = _converter.Convert(Request(InputPath, outputPath, new SvgPoint(3, 2)));
 
         Assert.Equal(outputPath, result.OutputPath);
+        Assert.Null(result.Animation);
         using Image<Rgba32> cursor = Image.Load<Rgba32>(outputPath);
-        Assert.Equal(CursorSizes.All.Count, cursor.Frames.Count);
-        for (int index = 0; index < CursorSizes.All.Count; index++)
+        Assert.Equal(CursorSizes.Default.Values.Count, cursor.Frames.Count);
+        for (int index = 0; index < CursorSizes.Default.Values.Count; index++)
         {
             PixelHotspot expectedHotspot = new(expectedX[index], expectedY[index]);
             CurFrameMetadata metadata = cursor.Frames[index].Metadata.GetCurMetadata();
 
-            Assert.Equal(new FrameSummary(CursorSizes.All[index], expectedHotspot), result.Frames[index]);
+            Assert.Equal(new FrameSummary(CursorSizes.Default.Values[index], expectedHotspot), result.Frames[index]);
             Assert.Equal(expectedHotspot, new PixelHotspot(metadata.HotspotX, metadata.HotspotY));
         }
     }
@@ -45,7 +52,7 @@ public sealed class CursorConverterTests : IDisposable
     {
         string outputPath = _directory.PathOf("blue-square.cur");
 
-        _converter.Convert(new ConversionRequest(TestFiles.PathOf("blue-square.svg"), outputPath, new SvgPoint(0, 0), BleedPercentage.Default));
+        _converter.Convert(Request(TestFiles.PathOf("blue-square.svg"), outputPath, new SvgPoint(0, 0)));
 
         Assert.All(TransparentPixelsPerFrame(outputPath), pixel => Assert.Equal(SquareColor, pixel));
     }
@@ -55,7 +62,7 @@ public sealed class CursorConverterTests : IDisposable
     {
         string outputPath = _directory.PathOf("blue-square.cur");
 
-        _converter.Convert(new ConversionRequest(TestFiles.PathOf("blue-square.svg"), outputPath, new SvgPoint(0, 0), new BleedPercentage(0)));
+        _converter.Convert(Request(TestFiles.PathOf("blue-square.svg"), outputPath, new SvgPoint(0, 0), bleed: new BleedPercentage(0)));
 
         Assert.All(TransparentPixelsPerFrame(outputPath), pixel => Assert.Equal(new Rgba32(0, 0, 0, 0), pixel));
     }
@@ -65,7 +72,7 @@ public sealed class CursorConverterTests : IDisposable
     {
         string outputPath = _directory.PathOf("nested", "folder", "left-half.cur");
 
-        _converter.Convert(new ConversionRequest(InputPath, outputPath, new SvgPoint(0, 0), BleedPercentage.Default));
+        _converter.Convert(Request(InputPath, outputPath, new SvgPoint(0, 0)));
 
         Assert.True(File.Exists(outputPath));
     }
@@ -76,10 +83,10 @@ public sealed class CursorConverterTests : IDisposable
         string outputPath = _directory.PathOf("left-half.cur");
         File.WriteAllText(outputPath, "previous content");
 
-        _converter.Convert(new ConversionRequest(InputPath, outputPath, new SvgPoint(0, 0), BleedPercentage.Default));
+        _converter.Convert(Request(InputPath, outputPath, new SvgPoint(0, 0)));
 
         using Image<Rgba32> cursor = Image.Load<Rgba32>(outputPath);
-        Assert.Equal(CursorSizes.All.Count, cursor.Frames.Count);
+        Assert.Equal(CursorSizes.Default.Values.Count, cursor.Frames.Count);
     }
 
     [Fact]
@@ -87,7 +94,7 @@ public sealed class CursorConverterTests : IDisposable
     {
         string outputPath = _directory.PathOf("left-half.cur");
 
-        Assert.Throws<CursorConversionException>(() => _converter.Convert(new ConversionRequest(InputPath, outputPath, new SvgPoint(40, 2), BleedPercentage.Default)));
+        Assert.Throws<CursorConversionException>(() => _converter.Convert(Request(InputPath, outputPath, new SvgPoint(40, 2))));
 
         Assert.Empty(Directory.EnumerateFileSystemEntries(_directory.FullPath));
     }
@@ -97,9 +104,195 @@ public sealed class CursorConverterTests : IDisposable
     {
         string outputPath = _directory.PathOf("malformed.cur");
 
-        Assert.Throws<CursorConversionException>(() => _converter.Convert(new ConversionRequest(TestFiles.PathOf("malformed.svg"), outputPath, new SvgPoint(0, 0), BleedPercentage.Default)));
+        Assert.Throws<CursorConversionException>(() => _converter.Convert(Request(TestFiles.PathOf("malformed.svg"), outputPath, new SvgPoint(0, 0))));
 
         Assert.Empty(Directory.EnumerateFileSystemEntries(_directory.FullPath));
+    }
+
+    [Theory]
+    [InlineData("css-blink.svg")]
+    [InlineData("smil-blink.svg")]
+    public void Convert_AnimatedSvg_WritesAnimatedCursorWithOneFramePerSample(string fileName)
+    {
+        string outputPath = _directory.PathOf("blink.ani");
+
+        ConversionResult result = _converter.Convert(Request(TestFiles.PathOf(fileName), outputPath, new SvgPoint(3, 2)));
+
+        AniFile ani = AniFile.Read(outputPath);
+        Assert.Equal(new AnimationSummary(AnimationFrameCount, FrameRate.Default, AnimationLoop, AnimationLoop), result.Animation);
+        Assert.Equal(AnimationFrameCount, ani.Frames.Count);
+        Assert.Equal(FrameRate.Default.Jiffies, ani.Jiffies);
+    }
+
+    [Fact]
+    public void Convert_AnimatedSvg_StoresEveryFrameAsPngCursorWithTheSameHotspots()
+    {
+        string outputPath = _directory.PathOf("blink.ani");
+
+        ConversionResult result = _converter.Convert(Request(AnimatedInputPath, outputPath, new SvgPoint(3, 2)));
+
+        Assert.All(AniFile.Read(outputPath).Frames, frame =>
+        {
+            using Image<Rgba32> cursor = Image.Load<Rgba32>(frame);
+            Assert.Equal(CursorSizes.Default.Values.Count, cursor.Frames.Count);
+            for (int index = 0; index < CursorSizes.Default.Values.Count; index++)
+            {
+                CurFrameMetadata metadata = cursor.Frames[index].Metadata.GetCurMetadata();
+                Assert.Equal(result.Frames[index].Hotspot, new PixelHotspot(metadata.HotspotX, metadata.HotspotY));
+                Assert.Equal(IconFrameCompression.Png, metadata.Compression);
+            }
+        });
+    }
+
+    // The format is passed by name: a public test method can't take the internal enum (CS0051).
+    [Theory]
+    [InlineData("left-half.svg", "left-half.cur", null, IconFrameCompression.Bmp)]
+    [InlineData("left-half.svg", "left-half.cur", nameof(CursorImageFormat.Png), IconFrameCompression.Png)]
+    [InlineData("css-blink.svg", "blink.ani", null, IconFrameCompression.Png)]
+    [InlineData("css-blink.svg", "blink.ani", nameof(CursorImageFormat.Png), IconFrameCompression.Png)]
+    public void Convert_StoresEveryImageInTheRequestedOrDefaultFormat(string inputFile, string outputFile, string? imageFormat, IconFrameCompression expected)
+    {
+        string outputPath = _directory.PathOf(outputFile);
+        CursorImageFormat? format = imageFormat is null ? null : Enum.Parse<CursorImageFormat>(imageFormat);
+
+        ConversionResult result = _converter.Convert(Request(TestFiles.PathOf(inputFile), outputPath, new SvgPoint(0, 0), imageFormat: format));
+
+        Assert.Equal(expected.ToString(), result.ImageFormat.ToString());
+        Assert.All(CursorFilesIn(outputPath), cursorFile =>
+        {
+            using Image<Rgba32> cursor = Image.Load<Rgba32>(cursorFile);
+            Assert.Equal(CursorSizes.Default.Values.Count, cursor.Frames.Count);
+            Assert.All<ImageFrame<Rgba32>>(cursor.Frames, frame => Assert.Equal(expected, frame.Metadata.GetCurMetadata().Compression));
+        });
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(nameof(CursorImageFormat.Bmp))]
+    public void Convert_AnimatedSvgWithSizesThatFitAsBmp_StoresBmpFrames(string? imageFormat)
+    {
+        string outputPath = _directory.PathOf("blink.ani");
+        CursorImageFormat? format = imageFormat is null ? null : Enum.Parse<CursorImageFormat>(imageFormat);
+
+        ConversionResult result = _converter.Convert(Request(AnimatedInputPath, outputPath, new SvgPoint(0, 0), sizes: Sizes(32, 48, 64), imageFormat: format));
+
+        Assert.Equal(CursorImageFormat.Bmp, result.ImageFormat);
+        Assert.All(AniFile.Read(outputPath).Frames, frame =>
+        {
+            using Image<Rgba32> cursor = Image.Load<Rgba32>(frame);
+            Assert.Equal(3, cursor.Frames.Count);
+            Assert.All<ImageFrame<Rgba32>>(cursor.Frames, image => Assert.Equal(IconFrameCompression.Bmp, image.Metadata.GetCurMetadata().Compression));
+        });
+    }
+
+    [Fact]
+    public void Convert_AnimatedSvgWithBmpThatDoesNotFit_ThrowsNamingTheImageAndWritesNothing()
+    {
+        CursorConversionException exception = Assert.Throws<CursorConversionException>(() =>
+            _converter.Convert(Request(AnimatedInputPath, _directory.PathOf("blink.ani"), new SvgPoint(0, 0), imageFormat: CursorImageFormat.Bmp)));
+
+        Assert.Contains("frame 1 stores its 128 px image at byte 68,998", exception.Message);
+        Assert.Contains("--image-format png", exception.Message);
+        Assert.Empty(Directory.EnumerateFileSystemEntries(_directory.FullPath));
+    }
+
+    [Fact]
+    public void Convert_Sizes_WritesOneImagePerSizeWithItsScaledHotspot()
+    {
+        string outputPath = _directory.PathOf("left-half.cur");
+        FrameSummary[] expected = [new(16, new PixelHotspot(1, 1)), new(40, new PixelHotspot(3, 2))];
+
+        ConversionResult result = _converter.Convert(Request(InputPath, outputPath, new SvgPoint(3, 2), sizes: Sizes(40, 16)));
+
+        Assert.Equal(expected, result.Frames);
+        using Image<Rgba32> cursor = Image.Load<Rgba32>(outputPath);
+        Assert.Equal([16, 40], Enumerable.Range(0, cursor.Frames.Count).Select(index => (int)(cursor.Frames[index].Metadata.GetCurMetadata().EncodingWidth ?? 0)));
+    }
+
+    [Fact]
+    public void Convert_AnimatedSvg_SamplesTheLoopEvenly()
+    {
+        string outputPath = _directory.PathOf("blink.ani");
+
+        _converter.Convert(Request(AnimatedInputPath, outputPath, new SvgPoint(0, 0)));
+
+        // css-blink.svg fades linearly from opaque to transparent within each loop.
+        IReadOnlyList<byte[]> frames = AniFile.Read(outputPath).Frames;
+        for (int index = 0; index < frames.Count; index++)
+        {
+            double expectedAlpha = byte.MaxValue * (1 - (double)index / frames.Count);
+            Assert.InRange(CenterAlphaOfSmallestImage(frames[index]), expectedAlpha - 2, expectedAlpha + 2);
+        }
+    }
+
+    [Theory]
+    [InlineData(60, 12, 1)]
+    [InlineData(10, 2, 6)]
+    public void Convert_FrameRate_DecidesFrameCountAndFrameLength(int framesPerSecond, int expectedFrames, int expectedJiffies)
+    {
+        string outputPath = _directory.PathOf("blink.ani");
+
+        ConversionResult result = _converter.Convert(Request(AnimatedInputPath, outputPath, new SvgPoint(0, 0), frameRate: new FrameRate(framesPerSecond)));
+
+        AniFile ani = AniFile.Read(outputPath);
+        Assert.Equal(expectedFrames, result.Animation?.FrameCount);
+        Assert.Equal(expectedFrames, ani.Frames.Count);
+        Assert.Equal(expectedJiffies, ani.Jiffies);
+    }
+
+    [Theory]
+    [InlineData("css-blink.svg", "blink.cur", ".ani")]
+    [InlineData("left-half.svg", "left-half.ani", ".cur")]
+    [InlineData("left-half.svg", "left-half.png", ".cur")]
+    [InlineData("css-blink.svg", "blink", ".ani")]
+    public void Convert_OutputExtensionNotMatchingAnimation_ThrowsAndWritesNothing(string inputFile, string outputFile, string expectedExtension)
+    {
+        CursorConversionException exception = Assert.Throws<CursorConversionException>(() => _converter.Convert(Request(TestFiles.PathOf(inputFile), _directory.PathOf(outputFile), new SvgPoint(0, 0))));
+
+        Assert.Contains($"must end in {expectedExtension}", exception.Message);
+        Assert.Empty(Directory.EnumerateFileSystemEntries(_directory.FullPath));
+    }
+
+    [Theory]
+    [InlineData("left-half.svg", "LEFT-HALF.CUR")]
+    [InlineData("css-blink.svg", "Blink.Ani")]
+    public void Convert_OutputExtension_IgnoresCase(string inputFile, string outputFile)
+    {
+        string outputPath = _directory.PathOf(outputFile);
+
+        _converter.Convert(Request(TestFiles.PathOf(inputFile), outputPath, new SvgPoint(0, 0)));
+
+        Assert.True(File.Exists(outputPath));
+    }
+
+    [Theory]
+    [InlineData("left-half.svg", "left-half.cur")]
+    [InlineData("css-blink.svg", "css-blink.ani")]
+    public void Convert_NoOutputPath_WritesNextToInputWithExtensionOfItsKind(string inputFile, string expectedOutputFile)
+    {
+        string inputPath = _directory.PathOf(inputFile);
+        File.Copy(TestFiles.PathOf(inputFile), inputPath);
+
+        ConversionResult result = _converter.Convert(Request(inputPath, null, new SvgPoint(0, 0)));
+
+        Assert.Equal(_directory.PathOf(expectedOutputFile), result.OutputPath);
+        Assert.True(File.Exists(result.OutputPath));
+    }
+
+    private static ConversionRequest Request(string inputPath, string? outputPath, SvgPoint hotspot, BleedPercentage? bleed = null, FrameRate? frameRate = null, CursorSizes? sizes = null, CursorImageFormat? imageFormat = null) =>
+        new(inputPath, outputPath, hotspot, bleed ?? BleedPercentage.Default, frameRate ?? FrameRate.Default, sizes ?? CursorSizes.Default, imageFormat);
+
+    private static CursorSizes Sizes(params int[] values) =>
+        CursorSizes.TryCreate(values, out CursorSizes? sizes) ? sizes : throw new ArgumentException("The test sizes are invalid.", nameof(values));
+
+    private static IReadOnlyList<byte[]> CursorFilesIn(string outputPath) =>
+        Path.GetExtension(outputPath) == CursorFileExtensions.Animated ? AniFile.Read(outputPath).Frames : [File.ReadAllBytes(outputPath)];
+
+    private static byte CenterAlphaOfSmallestImage(byte[] cursorFile)
+    {
+        using Image<Rgba32> cursor = Image.Load<Rgba32>(cursorFile);
+        int size = CursorSizes.Default.Values[0];
+        return cursor.Frames[0][size / 2, size / 2].A;
     }
 
     // The decoder places every frame top-left on a canvas of the largest size, so only that region belongs to the frame.
@@ -107,9 +300,9 @@ public sealed class CursorConverterTests : IDisposable
     {
         using Image<Rgba32> cursor = Image.Load<Rgba32>(cursorPath);
         List<Rgba32> transparent = [];
-        for (int index = 0; index < CursorSizes.All.Count; index++)
+        for (int index = 0; index < CursorSizes.Default.Values.Count; index++)
         {
-            int size = CursorSizes.All[index];
+            int size = CursorSizes.Default.Values[index];
             ImageFrame<Rgba32> frame = cursor.Frames[index];
             for (int y = 0; y < size; y++)
             {

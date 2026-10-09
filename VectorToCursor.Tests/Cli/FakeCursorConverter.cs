@@ -11,12 +11,19 @@ internal sealed class FakeCursorConverter : ICursorConverter
 
     public ConversionRequest? LastRequest { get; private set; }
 
+    /// <summary>What the fake reports as written; <see langword="null"/> pretends the SVG was static.</summary>
+    public AnimationSummary? Animation { get; init; }
+
+    /// <summary>The image format the fake reports as written.</summary>
+    public CursorImageFormat ImageFormat { get; init; } = CursorImageFormat.Bmp;
+
     public ConversionResult Convert(ConversionRequest request)
     {
         LastRequest = request;
         if (_failure is not null)
             throw _failure;
 
-        return new ConversionResult(request.OutputPath, [new FrameSummary(32, new PixelHotspot(3, 2)), new FrameSummary(256, new PixelHotspot(24, 16))]);
+        string outputPath = request.OutputPath ?? Path.ChangeExtension(request.InputPath, Animation is null ? CursorFileExtensions.Static : CursorFileExtensions.Animated);
+        return new ConversionResult(outputPath, [new FrameSummary(32, new PixelHotspot(3, 2)), new FrameSummary(256, new PixelHotspot(24, 16))], Animation, ImageFormat);
     }
 }

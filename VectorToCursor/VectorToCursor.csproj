@@ -6,6 +6,10 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <!-- Third-party trim/AOT warnings are reviewed, not allowed to abort the publish. -->
     <IlcTreatWarningsAsErrors>false</IlcTreatWarningsAsErrors>
+    <!-- The app's native .pdb (about 100 MB) stays in bin\...\native, out of the publish folder that is zipped as the portable archive. -->
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+    <!-- Required by the code that [LibraryImport] generates. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Version>1.0.0</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
@@ -15,10 +19,18 @@
     <PackageReference Include="SkiaSharp" Version="4.153.1" />
     <PackageReference Include="Svg.Skia" Version="5.2.3" />
     <PackageReference Include="System.CommandLine" Version="2.0.12" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="VectorToCursor.Tests" />
   </ItemGroup>
+
+  <!-- SkiaSharp and HarfBuzzSharp ship their native .pdb files as runtime assets, another 110 MB. -->
+  <Target Name="StripPdbsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
 
 </Project>
