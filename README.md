@@ -1,4 +1,4 @@
-# <img src="https://raw.githubusercontent.com/Der-Floh/VectorToCursor/main/Assets/icon-x512.png" alt="VectorToCursor icon" width="64"> VectorToCursor
+# <img src="https://raw.githubusercontent.com/Der-Floh/VectorToCursor/main/Assets/icon.svg" alt="VectorToCursor icon" height="64"> VectorToCursor
 
 [![GitHub Release](https://img.shields.io/github/v/release/Der-Floh/VectorToCursor)](https://github.com/Der-Floh/VectorToCursor/releases/latest)
 [![GitHub Downloads](https://img.shields.io/github/downloads/Der-Floh/VectorToCursor/total)](https://github.com/Der-Floh/VectorToCursor/releases)
