@@ -21,6 +21,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="vtc;vtc.cmd" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="VectorToCursor.Tests" />
   </ItemGroup>
 

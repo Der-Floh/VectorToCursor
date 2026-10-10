@@ -14,6 +14,7 @@ public sealed class FirstRunMessageTests
         string message = output.ToString();
         Assert.Contains(" 1.2.3 is installed.", message);
         Assert.Contains("--help", message);
+        Assert.Contains($"\"{FirstRunMessage.ShortCommandName} --help\"", message);
         Assert.Contains("Press any key to close this window.", message);
     }
 }

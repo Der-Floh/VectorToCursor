@@ -10,14 +10,16 @@ Converts an SVG file into a Windows cursor (`.cur`), or an animated cursor (`.an
 
 Download the setup or the portable archive for your processor from the [latest release](https://github.com/Der-Floh/VectorToCursor/releases/latest): `win-x64` for most PCs, `win-arm64` for Windows on Arm, `win-x86` for 32-bit Windows.
 
-- **Setup** (`VectorToCursor-win-x64-Setup.exe`): installs into `%LocalAppData%\VectorToCursor` without administrator rights and adds its `current` folder to your user `PATH`, so `VectorToCursor` runs in every terminal you open afterwards. When Setup is done, it opens a window that tells you how to start. Uninstalling under *Settings > Apps > Installed apps* removes the `PATH` entry again.
-- **Portable** (`VectorToCursor-win-x64-Portable.zip`): extract it anywhere. It holds a `VectorToCursor` folder with `VectorToCursor.exe` and the two DLLs it needs, which must stay together. Nothing is installed and `PATH` stays as it is.
+- **Setup** (`VectorToCursor-win-x64-Setup.exe`): installs into `%LocalAppData%\VectorToCursor` without administrator rights and adds its `current` folder to your user `PATH`, so `VectorToCursor`, or `vtc` for short, runs in every terminal you open afterwards. When Setup is done, it opens a window that tells you how to start. Uninstalling under *Settings > Apps > Installed apps* removes the `PATH` entry again.
+- **Portable** (`VectorToCursor-win-x64-Portable.zip`): extract it anywhere. It holds a `VectorToCursor` folder with `VectorToCursor.exe` and the two DLLs it needs, which must stay together, and the short command `vtc`. Nothing is installed and `PATH` stays as it is.
 
 ## Usage
 
 ```txt
 VectorToCursor <input> -x <x> -y <y> [-o <file>] [--sizes <list>] [--image-format <bmp|png>] [--bleed <percent>] [--fps <rate>]
 ```
+
+`vtc` is short for `VectorToCursor` and takes the same arguments. It hands them on through `cmd`, so in PowerShell a file name that contains `&` or `^` but no space only works with `VectorToCursor` itself.
 
 | Argument / option | Meaning |
 |---|---|

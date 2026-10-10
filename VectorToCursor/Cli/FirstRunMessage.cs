@@ -8,6 +8,9 @@ namespace VectorToCursor.Cli;
 /// </summary>
 internal static class FirstRunMessage
 {
+    /// <summary>The short command that vtc.cmd and the vtc script next to the app provide.</summary>
+    public const string ShortCommandName = "vtc";
+
     public static int Show(string version)
     {
         Write(Console.Out, version);
@@ -22,7 +25,7 @@ internal static class FirstRunMessage
         ArgumentException.ThrowIfNullOrWhiteSpace(version);
 
         output.WriteLine($"{RootCommand.ExecutableName} {version} is installed.");
-        output.WriteLine($"Open a new terminal and run \"{RootCommand.ExecutableName} --help\" to see how to convert an SVG file into a cursor.");
+        output.WriteLine($"Open a new terminal and run \"{RootCommand.ExecutableName} --help\", or \"{ShortCommandName} --help\" for short, to see how to convert an SVG file into a cursor.");
         output.WriteLine();
         output.WriteLine("Press any key to close this window.");
     }
