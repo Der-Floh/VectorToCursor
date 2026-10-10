@@ -454,6 +454,4 @@ $RECYCLE.BIN/
 !.vscode/extensions.json
 
 *.lscache
-.graphifyignore
-.graphify-out
-*_BUG.md
+*test.cmd
