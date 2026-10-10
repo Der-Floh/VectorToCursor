@@ -5,7 +5,7 @@ namespace VectorToCursor.Domain;
 /// <summary>Finds the length after which a set of animations repeats exactly: one loop of the animated cursor.</summary>
 internal static class AnimationLoop
 {
-    public static readonly TimeSpan MaximumLength = TimeSpan.FromSeconds(60);
+    public static readonly TimeSpan MaximumLength = TimeSpan.FromMinutes(10);
 
     /// <returns>
     /// The least common multiple of the repeating animations' iteration lengths, extended to cover every finite animation;
@@ -57,6 +57,6 @@ internal static class AnimationLoop
     private static void ThrowIfTooLong(long ticks)
     {
         if (ticks > MaximumLength.Ticks)
-            throw new CursorConversionException(string.Create(CultureInfo.InvariantCulture, $"The animation only repeats after {TimeSpan.FromTicks(ticks).TotalSeconds:0.###} s, but animated cursors are limited to loops of {MaximumLength.TotalSeconds} s."));
+            throw new CursorConversionException(string.Create(CultureInfo.InvariantCulture, $"The animation only repeats after {TimeSpan.FromTicks(ticks).TotalSeconds:0.###} s, but animated cursors are limited to loops of {MaximumLength.TotalMinutes} minutes."));
     }
 }

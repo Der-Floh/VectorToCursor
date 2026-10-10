@@ -119,9 +119,54 @@ public sealed class CursorConverterTests : IDisposable
         ConversionResult result = _converter.Convert(Request(TestFiles.PathOf(fileName), outputPath, new SvgPoint(3, 2)));
 
         AniFile ani = AniFile.Read(outputPath);
-        Assert.Equal(new AnimationSummary(AnimationFrameCount, FrameRate.Default, AnimationLoop, AnimationLoop), result.Animation);
+        Assert.Equal(new AnimationSummary(AnimationFrameCount, AnimationFrameCount, FrameRate.Default, AnimationLoop, AnimationLoop), result.Animation);
         Assert.Equal(AnimationFrameCount, ani.Frames.Count);
         Assert.Equal(FrameRate.Default.Jiffies, ani.Jiffies);
+        Assert.Null(ani.Rates);
+        Assert.Null(ani.Sequence);
+    }
+
+    [Fact]
+    public void Convert_AnimatedSvgWithAPause_ShowsTheHeldFrameInOneLongStep()
+    {
+        string outputPath = _directory.PathOf("hold.ani");
+
+        ConversionResult result = _converter.Convert(Request(TestFiles.PathOf("smil-hold.svg"), outputPath, new SvgPoint(0, 0)));
+
+        // smil-hold.svg slides during the first quarter of its 1 s loop, which takes 8 of its 30 frames, then stands still.
+        AnimationStep[] expected = [.. Enumerable.Range(0, 8).Select(index => new AnimationStep(index, 2)), new AnimationStep(8, 22 * 2)];
+        AniFile ani = AniFile.Read(outputPath);
+        Assert.Equal(new AnimationSummary(30, 9, FrameRate.Default, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1)), result.Animation);
+        Assert.Equal(9, ani.Frames.Count);
+        Assert.Equal(expected, ani.Steps);
+    }
+
+    [Fact]
+    public void Convert_AnimatedSvgShowingAFrameAgain_StoresItOnce()
+    {
+        string outputPath = _directory.PathOf("repeat.ani");
+
+        ConversionResult result = _converter.Convert(Request(TestFiles.PathOf("smil-repeat.svg"), outputPath, new SvgPoint(0, 0)));
+
+        // smil-repeat.svg shows the opacities 1, 0.2, 1 and 0.6 for an eighth of a second each: 4, 4, 4 and 3 frames.
+        AnimationStep[] expected = [new(0, 4 * 2), new(1, 4 * 2), new(0, 4 * 2), new(2, 3 * 2)];
+        AniFile ani = AniFile.Read(outputPath);
+        Assert.Equal(new AnimationSummary(15, 3, FrameRate.Default, TimeSpan.FromSeconds(0.5), TimeSpan.FromSeconds(0.5)), result.Animation);
+        Assert.Equal(3, ani.Frames.Count);
+        Assert.Equal(expected, ani.Steps);
+    }
+
+    [Fact]
+    public void Convert_LoopLongerThanAMinute_HoldsItsPauseInOneStep()
+    {
+        string outputPath = _directory.PathOf("long-hold.ani");
+
+        ConversionResult result = _converter.Convert(Request(TestFiles.PathOf("smil-long-hold.svg"), outputPath, new SvgPoint(0, 0), frameRate: new FrameRate(1)));
+
+        // smil-long-hold.svg slides within the first half second of its 100 s loop, then stands still.
+        AniFile ani = AniFile.Read(outputPath);
+        Assert.Equal(new AnimationSummary(100, 2, new FrameRate(1), TimeSpan.FromSeconds(100), TimeSpan.FromSeconds(100)), result.Animation);
+        Assert.Equal([new AnimationStep(0, 60), new AnimationStep(1, 99 * 60)], ani.Steps);
     }
 
     [Fact]

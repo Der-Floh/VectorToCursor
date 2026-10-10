@@ -56,42 +56,68 @@ internal sealed class CursorConverter : ICursorConverter
 
     private void WriteStaticCursor(ISvgArtwork artwork, IReadOnlyList<SquareFit> fits, IReadOnlyList<FrameSummary> summaries, ConversionRequest request, CursorImageFormat format, string outputPath)
     {
-        byte[] cursor = EncodeCursor(artwork, fits, summaries, request.Bleed, TimeSpan.Zero, format);
+        using ArtworkSnapshot snapshot = ArtworkSnapshot.Take(artwork, fits, TimeSpan.Zero);
+        byte[] cursor = EncodeCursor(snapshot, summaries, request.Bleed, format);
         WriteAtomically(outputPath, stream => stream.Write(cursor));
     }
 
     // A BMP image has the same length in every frame, so when the first frame fits, all of them do.
     private CursorImageFormat ChooseAnimatedFormat(ISvgArtwork artwork, IReadOnlyList<SquareFit> fits, IReadOnlyList<FrameSummary> summaries, BleedPercentage bleed)
     {
-        byte[] firstFrame = EncodeCursor(artwork, fits, summaries, bleed, TimeSpan.Zero, ImageFormats.AnimatedPreferred);
+        using ArtworkSnapshot snapshot = ArtworkSnapshot.Take(artwork, fits, TimeSpan.Zero);
+        byte[] firstFrame = EncodeCursor(snapshot, summaries, bleed, ImageFormats.AnimatedPreferred);
         return AniFrameLimit.FindImageBeyondLimit(firstFrame) is null ? ImageFormats.AnimatedPreferred : ImageFormats.AnimatedFallback;
     }
 
-    // Each frame is checked as soon as it is encoded, so a frame Windows would refuse fails before the rest are rendered.
     private AnimationSummary WriteAnimatedCursor(ISvgArtwork artwork, IReadOnlyList<SquareFit> fits, IReadOnlyList<FrameSummary> summaries, ConversionRequest request, CursorImageFormat format, TimeSpan loopDuration, string outputPath)
     {
         AnimationTimeline timeline = AnimationTimeline.Create(loopDuration, request.FrameRate);
-        List<byte[]> frames = new(timeline.FrameCount);
-        for (int index = 0; index < timeline.FrameCount; index++)
-        {
-            byte[] frame = EncodeCursor(artwork, fits, summaries, request.Bleed, timeline.TimeOf(index), format);
-            AniFrameLimit.EnsureFits(frame, index, format);
-            frames.Add(frame);
-        }
+        AnimationSequence sequence = SampleAnimation(artwork, fits, summaries, request.Bleed, format, timeline);
 
-        WriteAtomically(outputPath, stream => _animatedCursorEncoder.Encode(frames, request.FrameRate, stream));
-        return new AnimationSummary(timeline.FrameCount, request.FrameRate, loopDuration, timeline.EffectiveDuration);
+        WriteAtomically(outputPath, stream => _animatedCursorEncoder.Encode(sequence, stream));
+        return new AnimationSummary(timeline.FrameCount, sequence.Frames.Count, request.FrameRate, loopDuration, timeline.EffectiveDuration);
     }
 
-    // One complete .cur file: every size rendered at the same moment, with bled transparent pixels.
-    private byte[] EncodeCursor(ISvgArtwork artwork, IReadOnlyList<SquareFit> fits, IReadOnlyList<FrameSummary> summaries, BleedPercentage bleed, TimeSpan time, CursorImageFormat format)
+    // A frame that looks exactly like the previous one reuses its bytes and skips the costly bleeding and encoding. Every new
+    // frame is checked as soon as it is encoded, so a frame Windows would refuse fails before the rest are rendered.
+    private AnimationSequence SampleAnimation(ISvgArtwork artwork, IReadOnlyList<SquareFit> fits, IReadOnlyList<FrameSummary> summaries, BleedPercentage bleed, CursorImageFormat format, AnimationTimeline timeline)
+    {
+        AnimationSequence sequence = new();
+        ArtworkSnapshot? current = null;
+        try
+        {
+            byte[] frame = [];
+            for (int index = 0; index < timeline.FrameCount; index++)
+            {
+                ArtworkSnapshot? previous = current;
+                current = ArtworkSnapshot.Take(artwork, fits, timeline.TimeOf(index));
+                using (previous)
+                {
+                    if (previous is null || !current.HasSamePixelsAs(previous))
+                    {
+                        frame = EncodeCursor(current, summaries, bleed, format);
+                        AniFrameLimit.EnsureFits(frame, index, format);
+                    }
+                }
+                sequence.Add(frame, timeline.FrameRate.Jiffies);
+            }
+            return sequence;
+        }
+        finally
+        {
+            current?.Dispose();
+        }
+    }
+
+    // One complete .cur file: every size of the snapshot, with bled transparent pixels; the snapshot itself stays unchanged.
+    private byte[] EncodeCursor(ArtworkSnapshot snapshot, IReadOnlyList<FrameSummary> summaries, BleedPercentage bleed, CursorImageFormat format)
     {
         List<CursorFrame> frames = [];
         try
         {
-            for (int index = 0; index < fits.Count; index++)
+            for (int index = 0; index < snapshot.Images.Count; index++)
             {
-                CursorFrame frame = new(artwork.Render(fits[index], time), summaries[index].Hotspot);
+                CursorFrame frame = new(snapshot.Images[index].Clone(), summaries[index].Hotspot);
                 frames.Add(frame);
                 ColorBleed.Apply(frame.Image, bleed.BandWidthFor(frame.Size));
             }

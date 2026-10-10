@@ -59,23 +59,30 @@ public sealed class AnimationLoopTests
     }
 
     [Fact]
+    public void Calculate_LoopOfSeveralMinutes_IsAllowed()
+    {
+        Assert.Equal(Milliseconds(167_000), AnimationLoop.Calculate([Endless(167_000), Endless(500)]));
+    }
+
+    [Fact]
     public void Calculate_LoopOfMaximumLength_IsAllowed()
     {
-        Assert.Equal(AnimationLoop.MaximumLength, AnimationLoop.Calculate([Endless(12000), Endless(20000)]));
+        Assert.Equal(AnimationLoop.MaximumLength, AnimationLoop.Calculate([Endless(120_000), Endless(200_000)]));
     }
 
     [Fact]
     public void Calculate_EndlessLoopLongerThanMaximum_Throws()
     {
-        CursorConversionException exception = Assert.Throws<CursorConversionException>(() => AnimationLoop.Calculate([Endless(7000), Endless(11000)]));
+        CursorConversionException exception = Assert.Throws<CursorConversionException>(() => AnimationLoop.Calculate([Endless(70_000), Endless(110_000)]));
 
-        Assert.Contains("77 s", exception.Message);
+        Assert.Contains("770 s", exception.Message);
+        Assert.Contains("10 minutes", exception.Message);
     }
 
     [Fact]
     public void Calculate_FiniteAnimationEndingAfterMaximum_Throws()
     {
-        Assert.Throws<CursorConversionException>(() => AnimationLoop.Calculate([Finite(1000, active: 1000, begin: 60000)]));
+        Assert.Throws<CursorConversionException>(() => AnimationLoop.Calculate([Finite(1000, active: 1000, begin: (int)AnimationLoop.MaximumLength.TotalMilliseconds)]));
     }
 
     [Fact]

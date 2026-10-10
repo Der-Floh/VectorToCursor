@@ -70,8 +70,9 @@ Created ...\css-blink.ani with BMP images: 6 frames at 30 fps (0.2 s)
 ### Animated cursors
 
 - **Detection:** CSS animations (`@keyframes` with the `animation` properties) and SMIL elements such as `<animate>` and `<animateTransform>` make the output an `.ani` file.
-- **Loop:** one loop lasts until every animation repeats exactly, the least common multiple of their lengths. Loops longer than 60 s are rejected.
-- **Frames:** the loop is sampled evenly at `--fps` frames per second. The rate must divide 60, because animated cursors count time in sixtieths of a second, and a loop may have at most 1,800 frames.
+- **Loop:** one loop lasts until every animation repeats exactly, the least common multiple of their lengths. Loops longer than 10 minutes are rejected.
+- **Frames:** the loop is sampled evenly at `--fps` frames per second. The rate must divide 60, because animated cursors count time in sixtieths of a second.
+- **Identical frames:** a frame that looks exactly like the one before it, pixel for pixel in every size, isn't stored again; the frame before is shown longer instead. A frame that repeats an earlier one is stored once and shown again from there. So a pause or a held pose adds almost nothing to the file, and the summary says how many distinct frames were stored, e.g. `5,010 frames at 30 fps (167 s), stored as 12 distinct frames`. A loop may have at most 1,800 distinct frames.
 - **Hotspot:** every frame shares the same hotspot.
 - **CSS support:** opacity, fill and stroke with their opacities, stroke width, dash array and dash offset, and the transforms rotate, translate, scale and skew, eased with linear, the `ease` keywords, `cubic-bezier()` without overshoot or single steps. Anything that can't be played back exactly is reported as an error instead of producing a different animation.
 

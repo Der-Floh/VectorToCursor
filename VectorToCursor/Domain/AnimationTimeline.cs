@@ -1,12 +1,8 @@
-using System.Globalization;
-
 namespace VectorToCursor.Domain;
 
 /// <summary>The frames an animated cursor samples from one loop of an animation.</summary>
 internal sealed class AnimationTimeline
 {
-    public const int MaximumFrameCount = 1800;
-
     private AnimationTimeline(TimeSpan loopDuration, FrameRate frameRate, int frameCount)
     {
         LoopDuration = loopDuration;
@@ -26,17 +22,15 @@ internal sealed class AnimationTimeline
     /// </summary>
     public TimeSpan EffectiveDuration => TimeSpan.FromTicks((long)FrameCount * FrameRate.Jiffies * TimeSpan.TicksPerSecond / FrameRate.JiffiesPerSecond);
 
-    /// <exception cref="CursorConversionException">The loop needs more than <see cref="MaximumFrameCount"/> frames.</exception>
+    /// <param name="loopDuration">Positive and at most <see cref="AnimationLoop.MaximumLength"/>.</param>
     public static AnimationTimeline Create(TimeSpan loopDuration, FrameRate frameRate)
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(loopDuration, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(loopDuration, AnimationLoop.MaximumLength);
 
         double exactFrames = (double)loopDuration.Ticks * frameRate.FramesPerSecond / TimeSpan.TicksPerSecond;
-        long frameCount = Math.Max(1, (long)Math.Round(exactFrames, MidpointRounding.AwayFromZero));
-        if (frameCount > MaximumFrameCount)
-            throw new CursorConversionException(string.Create(CultureInfo.InvariantCulture, $"The animation needs {frameCount} frames at {frameRate} fps, but at most {MaximumFrameCount} are supported. Use a lower --fps or a shorter animation."));
-
-        return new AnimationTimeline(loopDuration, frameRate, (int)frameCount);
+        int frameCount = Math.Max(1, (int)Math.Round(exactFrames, MidpointRounding.AwayFromZero));
+        return new AnimationTimeline(loopDuration, frameRate, frameCount);
     }
 
     /// <summary>The animation time of frame <paramref name="index"/>, computed in whole ticks so frames never drift.</summary>

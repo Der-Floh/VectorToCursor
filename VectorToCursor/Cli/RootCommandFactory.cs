@@ -143,9 +143,13 @@ internal static class RootCommandFactory
 
     private static string DescribeAnimation(AnimationSummary animation)
     {
-        string description = string.Create(CultureInfo.InvariantCulture, $"{animation.FrameCount} frames at {animation.FrameRate} fps ({animation.EffectiveDuration.TotalSeconds:0.###} s)");
+        string description = string.Create(CultureInfo.InvariantCulture, $"{Count(animation.FrameCount, "frame")} at {animation.FrameRate} fps ({animation.EffectiveDuration.TotalSeconds:0.###} s)");
+        if (animation.DistinctFrameCount < animation.FrameCount)
+            description += $", stored as {Count(animation.DistinctFrameCount, "distinct frame")}";
         return animation.EffectiveDuration == animation.LoopDuration
             ? description
             : description + string.Create(CultureInfo.InvariantCulture, $"; the SVG's loop is {animation.LoopDuration.TotalSeconds:0.###} s, which isn't a whole number of frames");
     }
+
+    private static string Count(int count, string noun) => string.Create(CultureInfo.InvariantCulture, $"{count:N0} {noun}{(count == 1 ? "" : "s")}");
 }

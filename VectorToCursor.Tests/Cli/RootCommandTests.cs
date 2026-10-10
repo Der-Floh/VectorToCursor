@@ -65,7 +65,7 @@ public sealed class RootCommandTests
     [Fact]
     public void AnimatedSuccess_PrintsFramesAndDuration()
     {
-        AnimationSummary animation = new(165, FrameRate.Default, TimeSpan.FromMilliseconds(5500), TimeSpan.FromMilliseconds(5500));
+        AnimationSummary animation = new(165, 165, FrameRate.Default, TimeSpan.FromMilliseconds(5500), TimeSpan.FromMilliseconds(5500));
 
         CommandRun run = Run(new FakeCursorConverter { Animation = animation, ImageFormat = CursorImageFormat.Png }, InputPath, "-x", "3", "-y", "2");
 
@@ -73,10 +73,32 @@ public sealed class RootCommandTests
         Assert.Contains("   256  24,16", run.Output);
     }
 
+    [Theory]
+    [InlineData(5010, 11, 167, "5,010 frames at 30 fps (167 s), stored as 11 distinct frames")]
+    [InlineData(30, 1, 1, "30 frames at 30 fps (1 s), stored as 1 distinct frame")]
+    public void AnimatedSuccess_RepeatedFrames_PrintsHowManyAreStored(int frames, int distinctFrames, int seconds, string expected)
+    {
+        AnimationSummary animation = new(frames, distinctFrames, FrameRate.Default, TimeSpan.FromSeconds(seconds), TimeSpan.FromSeconds(seconds));
+
+        CommandRun run = Run(new FakeCursorConverter { Animation = animation }, InputPath, "-x", "3", "-y", "2");
+
+        Assert.Contains($"BMP images: {expected}{Environment.NewLine}", run.Output);
+    }
+
+    [Fact]
+    public void AnimatedSuccess_SingleFrame_PrintsItInTheSingular()
+    {
+        AnimationSummary animation = new(1, 1, FrameRate.Default, TimeSpan.FromTicks(333_333), TimeSpan.FromTicks(333_333));
+
+        CommandRun run = Run(new FakeCursorConverter { Animation = animation }, InputPath, "-x", "3", "-y", "2");
+
+        Assert.Contains($"BMP images: 1 frame at 30 fps (0.033 s){Environment.NewLine}", run.Output);
+    }
+
     [Fact]
     public void AnimatedSuccess_LoopNotWholeFrames_PrintsBothDurations()
     {
-        AnimationSummary animation = new(3, FrameRate.Default, TimeSpan.FromMilliseconds(110), TimeSpan.FromMilliseconds(100));
+        AnimationSummary animation = new(3, 3, FrameRate.Default, TimeSpan.FromMilliseconds(110), TimeSpan.FromMilliseconds(100));
 
         CommandRun run = Run(new FakeCursorConverter { Animation = animation }, InputPath, "-x", "3", "-y", "2");
 

@@ -26,19 +26,18 @@ public sealed class AnimationTimelineTests
     }
 
     [Fact]
-    public void Create_MaximumFrameCount_IsAllowed()
+    public void Create_LongestLoopAtHighestFrameRate_SamplesEveryFrame()
     {
-        AnimationTimeline timeline = AnimationTimeline.Create(TimeSpan.FromSeconds(60), FrameRate.Default);
+        AnimationTimeline timeline = AnimationTimeline.Create(AnimationLoop.MaximumLength, new FrameRate(60));
 
-        Assert.Equal(AnimationTimeline.MaximumFrameCount, timeline.FrameCount);
+        Assert.Equal(36_000, timeline.FrameCount);
+        Assert.Equal(AnimationLoop.MaximumLength, timeline.EffectiveDuration);
     }
 
     [Fact]
-    public void Create_MoreThanMaximumFrameCount_Throws()
+    public void Create_LoopLongerThanAnimationLoopAllows_Throws()
     {
-        CursorConversionException exception = Assert.Throws<CursorConversionException>(() => AnimationTimeline.Create(TimeSpan.FromSeconds(60), new FrameRate(60)));
-
-        Assert.Contains("--fps", exception.Message);
+        Assert.Throws<ArgumentOutOfRangeException>(() => AnimationTimeline.Create(AnimationLoop.MaximumLength + TimeSpan.FromTicks(1), FrameRate.Default));
     }
 
     [Fact]
