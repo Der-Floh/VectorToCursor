@@ -1,13 +1,13 @@
 using VectorToCursor.Application;
-using VectorToCursor.Cli;
 
 namespace VectorToCursor.Tests.Cli;
 
 /// <summary>The shims ship next to the app, so the build copies them into the output folder of this test project too.</summary>
 public sealed class ShortCommandShimTests
 {
-    private const string CmdShim = FirstRunMessage.ShortCommandName + ".cmd";
-    private const string ShellShim = FirstRunMessage.ShortCommandName;
+    private const string ShortCommandName = "vtc";
+    private const string CmdShim = ShortCommandName + ".cmd";
+    private const string ShellShim = ShortCommandName;
 
     private static readonly string AppExecutable = typeof(CursorConverter).Assembly.GetName().Name + ".exe";
 

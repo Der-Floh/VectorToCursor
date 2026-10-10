@@ -5,14 +5,14 @@ using VectorToCursor.Installation;
 using VectorToCursor.Rendering;
 using Velopack;
 
-SemanticVersion? installedVersion = null;
+bool launchedBySetup = false;
 VelopackApp.Build()
     .AddFolderToUserPath(AppContext.BaseDirectory)
-    .OnFirstRun(version => installedVersion = version)
+    .OnFirstRun(_ => launchedBySetup = true)
     .Run();
 
-if (installedVersion is not null)
-    return FirstRunMessage.Show(installedVersion.ToString());
+if (launchedBySetup)
+    return ExitCodes.Success;
 
 ICursorConverter converter = new CursorConverter(new SkiaSvgLoader(), new ImageSharpCursorEncoder(), new AniEncoder());
 return RootCommandFactory.Create(converter).Parse(args).Invoke();
