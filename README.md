@@ -1,7 +1,8 @@
-# <img src="https://raw.githubusercontent.com/Der-Floh/VectorToCursor/main/Assets/icon.svg" alt=" icon" height="64"> Vector To Cursor
+# <img src="https://raw.githubusercontent.com/Der-Floh/VectorToCursor/main/Assets/icon.svg" alt=" icon" height="48"/> Vector To Cursor
 
-[![GitHub Release](https://img.shields.io/github/v/release/Der-Floh/VectorToCursor)](https://github.com/Der-Floh/VectorToCursor/releases/latest)
-[![GitHub Downloads](https://img.shields.io/github/downloads/Der-Floh/VectorToCursor/total)](https://github.com/Der-Floh/VectorToCursor/releases)
+[![Release](https://img.shields.io/github/v/release/Der-Floh/VectorToCursor)](https://github.com/Der-Floh/VectorToCursor/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Der-Floh/VectorToCursor/total)](https://github.com/Der-Floh/VectorToCursor/releases)
+[![WinGet](https://img.shields.io/badge/WinGet-Available-0078D4?logo=windows)](https://winget.run/search?query=Cursor%20Installer%20Creator)
 [![CI](https://github.com/Der-Floh/VectorToCursor/actions/workflows/ci.yml/badge.svg)](https://github.com/Der-Floh/VectorToCursor/actions/workflows/ci.yml)
 
 Converts an SVG file into a Windows cursor (`.cur`), or an animated cursor (`.ani`) when the SVG is animated. The file holds one image per size, by default 32, 48, 64, 96, 128 and 256 px, and each size gets its own scaled hotspot. It is a .NET 10 NativeAOT console app built with System.CommandLine, ImageSharp and Svg.Skia, and installed with Velopack.
@@ -101,9 +102,9 @@ Created ...\css-blink.ani with BMP images: 6 frames at 30 fps (0.2 s)
 
 ## 📜 License
 
-Licensed under the [MIT License](./LICENSE).
+Licensed under the [MIT License](https://raw.githubusercontent.com/Der-Floh/VectorToCursor/main/LICENSE.txt).
 
 <br>
 <br>
 
-[!["Buy me a coffee"](https://raw.githubusercontent.com/Der-Floh/Der-Floh/refs/heads/main/_meta/BuyMeACoffee/Buttons%20%26%20Icons/orange-button-x180.png)](https://www.buymeacoffee.com/der_floh)
+[!["Buy me a coffee"](https://raw.githubusercontent.com/Der-Floh/Der-Floh/main/_meta/BuyMeACoffee/Buttons%20%26%20Icons/orange-button-x180.png)](https://www.buymeacoffee.com/der_floh)
